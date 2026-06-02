@@ -1,0 +1,19 @@
+{
+    "name": "SWeetJelly.Save.Framework",
+    "rootNamespace": "SWeetJelly.Save.Framework",
+    "references": [
+        "SWeetJelly.Save.Contract",
+        "SWeetJelly.Save.Domain",
+        "SWeetJelly.Save.App",
+        "SWeetJelly.Serialization.Contract"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

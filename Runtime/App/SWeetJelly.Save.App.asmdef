@@ -1,0 +1,18 @@
+{
+    "name": "SWeetJelly.Save.App",
+    "rootNamespace": "SWeetJelly.Save.App",
+    "references": [
+        "SWeetJelly.Save.Contract",
+        "SWeetJelly.Save.Domain",
+        "SWeetJelly.Serialization.Contract"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

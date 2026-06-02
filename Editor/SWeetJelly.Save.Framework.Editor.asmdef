@@ -1,0 +1,20 @@
+{
+    "name": "SWeetJelly.Save.Framework.Editor",
+    "rootNamespace": "SWeetJelly.Save.Framework.Editor",
+    "references": [
+        "SWeetJelly.Save.InitialiserIntegraion",
+        "SWeetJelly.Save.Framework",
+        "SWeetJelly.Initialiser.Framework"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

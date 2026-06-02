@@ -1,0 +1,17 @@
+{
+  "name": "com.sweetjelly.save",
+  "version": "1.0.0",
+  "displayName": "SWeetJelly Save",
+  "description": "This is SWeetJelly Save",
+  "unity": "2022.3",
+  "dependencies": {
+    "com.sweetjelly.initialiser": "1.0.0",
+    "com.sweetjelly.serialization": "1.0.0",
+    "com.sweetjelly.utils": "1.7.0"
+ },
+  "author": {
+    "name": "SWeetJellyStudio",
+    "email": "sweetjellystudio@gmail.com",
+    "url": "https://www.sweetjellystudio.com"
+  }
+}
