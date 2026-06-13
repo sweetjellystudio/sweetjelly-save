@@ -4,7 +4,8 @@
     "references": [
         "SWeetJelly.Save.Contract",
         "SWeetJelly.Save.Domain",
-        "SWeetJelly.Serialization.Contract"
+        "SWeetJelly.Serialization.Contract",
+        "SWeetJelly.Shared.Result"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

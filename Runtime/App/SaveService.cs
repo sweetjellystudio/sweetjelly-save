@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using SWeetJelly.Save.Contract;
 using SWeetJelly.Save.Domain;
 using SWeetJelly.Serialization.Contract;
+using SWeetJelly.Shared.Result;
 
 namespace SWeetJelly.Save.App
 {
@@ -29,7 +30,11 @@ namespace SWeetJelly.Save.App
         {
             get
             {
-                EnsureLoaded();
+                Result loadedResult = EnsureLoaded();
+
+                if (loadedResult.IsFailure)
+                    throw new InvalidOperationException(loadedResult.Error.ToString());
+
                 return currentSave;
             }
         }
@@ -69,23 +74,31 @@ namespace SWeetJelly.Save.App
             this.nowProvider = nowProvider ?? (() => DateTime.Now);
         }
 
-        public void Register(ISaveObject saveObject)
+        public Result Register(ISaveObject saveObject)
         {
             if (saveObject == null)
-                throw new ArgumentNullException(nameof(saveObject));
+                return Result.Failure(SaveErrors.InvalidSaveObject);
 
             if (saveObject.Key.IsEmpty)
-                throw new ArgumentException("Save object key cannot be empty.", nameof(saveObject));
+                return Result.Failure(SaveErrors.InvalidKey);
 
             if (saveObjects.ContainsKey(saveObject.Key))
-                throw new InvalidOperationException($"Save object already registered: {saveObject.Key}");
+                return Result.Failure(SaveErrors.DuplicateKey(saveObject.Key));
 
             saveObjects.Add(saveObject.Key, saveObject);
 
             if (IsLoaded && loadedEntries.TryGetValue(saveObject.Key, out var entry))
             {
-                Restore(saveObject, entry);
+                Result restoreResult = Restore(saveObject, entry);
+
+                if (restoreResult.IsFailure)
+                {
+                    saveObjects.Remove(saveObject.Key);
+                    return restoreResult;
+                }
             }
+
+            return Result.Success();
         }
 
         public bool Unregister(SaveKey key)
@@ -106,7 +119,7 @@ namespace SWeetJelly.Save.App
                 currentSave.SetTime(time);
         }
 
-        public async Task LoadAsync(CancellationToken ct = default)
+        public async Task<Result> LoadAsync(CancellationToken ct = default)
         {
             ct.ThrowIfCancellationRequested();
 
@@ -114,10 +127,15 @@ namespace SWeetJelly.Save.App
 
             if (serializer.ExistsAtPersistentDataPath(saveFileName))
             {
-                currentSave = await serializer.LoadFromPersistentDataPathAsync<GlobalSaveData>(
+                Result<GlobalSaveData> loadResult = await serializer.LoadFromPersistentDataPathAsync<GlobalSaveData>(
                     saveFileName,
                     saveFormat,
                     ct);
+
+                if (loadResult.IsFailure)
+                    return Result.Failure(SaveErrors.LoadFailed(loadResult.Error));
+
+                currentSave = loadResult.Value;
             }
             else
             {
@@ -129,42 +147,60 @@ namespace SWeetJelly.Save.App
             currentSave.Initialise(currentTime);
 
             CacheLoadedEntries(currentSave.SavedData);
-            RestoreRegisteredObjects();
+            Result restoreResult = RestoreRegisteredObjects();
+
+            if (restoreResult.IsFailure)
+                return restoreResult;
 
             IsLoaded = true;
             IsDirty = false;
 
             Loaded?.Invoke(this, EventArgs.Empty);
+
+            return Result.Success();
         }
 
-        public Task SaveAsync(CancellationToken ct = default)
+        public Task<Result> SaveAsync(CancellationToken ct = default)
         {
             return SaveAsync(false, ct);
         }
 
-        public async Task SaveAsync(
+        public async Task<Result> SaveAsync(
             bool forceSave,
             CancellationToken ct = default)
         {
             ct.ThrowIfCancellationRequested();
 
-            EnsureLoaded();
+            Result loadedResult = EnsureLoaded();
+
+            if (loadedResult.IsFailure)
+                return loadedResult;
 
             if (!forceSave && !IsDirty)
-                return;
+                return Result.Success();
 
-            currentSave.SetSavedData(CaptureSavedData());
+            Result<SavedDataContainer> captureResult = CaptureSavedData();
+
+            if (captureResult.IsFailure)
+                return Result.Failure(captureResult.Error);
+
+            currentSave.SetSavedData(captureResult.Value);
             currentSave.Flush(currentTime, nowProvider());
 
-            await serializer.SaveToPersistentDataPathAsync(
+            Result saveResult = await serializer.SaveToPersistentDataPathAsync(
                 currentSave,
                 saveFileName,
                 saveFormat,
                 ct);
 
+            if (saveResult.IsFailure)
+                return Result.Failure(SaveErrors.SaveFailed(saveResult.Error));
+
             IsDirty = false;
 
             Saved?.Invoke(this, EventArgs.Empty);
+
+            return Result.Success();
         }
 
         public void Delete()
@@ -179,7 +215,7 @@ namespace SWeetJelly.Save.App
             Deleted?.Invoke(this, EventArgs.Empty);
         }
 
-        private SavedDataContainer CaptureSavedData()
+        private Result<SavedDataContainer> CaptureSavedData()
         {
             var container = new SavedDataContainer();
 
@@ -189,18 +225,22 @@ namespace SWeetJelly.Save.App
 
                 object value = saveObject.CaptureUntyped();
 
-                string serializedValue = serializer.SerializeToText(
+                Result<string> serializeResult = serializer.SerializeToText(
                     value,
                     saveObject.ValueType,
                     entryFormat);
 
+                if (serializeResult.IsFailure)
+                    return Result<SavedDataContainer>.Failure(
+                        SaveErrors.CaptureFailed(saveObject.Key, serializeResult.Error));
+
                 container.Entries.Add(new SavedDataEntry(
                     key: saveObject.Key.Value,
                     typeName: saveObject.ValueType.AssemblyQualifiedName,
-                    serializedValue: serializedValue));
+                    serializedValue: serializeResult.Value));
             }
 
-            return container;
+            return Result<SavedDataContainer>.Success(container);
         }
 
         private void CacheLoadedEntries(SavedDataContainer container)
@@ -219,42 +259,54 @@ namespace SWeetJelly.Save.App
             }
         }
 
-        private void RestoreRegisteredObjects()
+        private Result RestoreRegisteredObjects()
         {
             foreach (var pair in saveObjects)
             {
                 if (loadedEntries.TryGetValue(pair.Key, out var entry))
                 {
-                    Restore(pair.Value, entry);
+                    Result restoreResult = Restore(pair.Value, entry);
+
+                    if (restoreResult.IsFailure)
+                        return restoreResult;
                 }
             }
+
+            return Result.Success();
         }
 
-        private void Restore(
+        private Result Restore(
             ISaveObject saveObject,
             SavedDataEntry entry)
         {
             if (saveObject == null)
-                throw new ArgumentNullException(nameof(saveObject));
+                return Result.Failure(SaveErrors.InvalidSaveObject);
 
             if (entry == null)
-                return;
+                return Result.Success();
 
             if (string.IsNullOrWhiteSpace(entry.SerializedValue))
-                return;
+                return Result.Success();
 
-            object value = serializer.DeserializeFromText(
+            Result<object> deserializeResult = serializer.DeserializeFromText(
                 entry.SerializedValue,
                 saveObject.ValueType,
                 entryFormat);
 
-            saveObject.RestoreUntyped(value);
+            if (deserializeResult.IsFailure)
+                return Result.Failure(SaveErrors.RestoreFailed(saveObject.Key, deserializeResult.Error));
+
+            saveObject.RestoreUntyped(deserializeResult.Value);
+
+            return Result.Success();
         }
 
-        private void EnsureLoaded()
+        private Result EnsureLoaded()
         {
             if (!IsLoaded)
-                throw new InvalidOperationException("SaveService has not been loaded.");
+                return Result.Failure(SaveErrors.NotLoaded);
+
+            return Result.Success();
         }
     }
 }

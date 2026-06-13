@@ -5,7 +5,8 @@
         "SWeetJelly.Save.Contract",
         "SWeetJelly.Save.Domain",
         "SWeetJelly.Save.App",
-        "SWeetJelly.Serialization.Contract"
+        "SWeetJelly.Serialization.Contract",
+        "SWeetJelly.Shared.Result"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
