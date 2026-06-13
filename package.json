@@ -7,8 +7,9 @@
   "dependencies": {
     "com.sweetjelly.initialiser": "1.0.0",
     "com.sweetjelly.serialization": "1.0.0",
-    "com.sweetjelly.utils": "1.7.0"
- },
+    "com.sweetjelly.utils": "1.7.0",
+    "com.sweetjelly.shared": "1.0.0"
+  },
   "author": {
     "name": "SWeetJellyStudio",
     "email": "sweetjellystudio@gmail.com",

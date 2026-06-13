@@ -3,6 +3,7 @@ using System.Collections;
 using System.Threading;
 using System.Threading.Tasks;
 using SWeetJelly.Save.App;
+using SWeetJelly.Shared.Result;
 using UnityEngine;
 
 namespace SWeetJelly.Save.Framework
@@ -64,7 +65,13 @@ namespace SWeetJelly.Save.Framework
 
                 saveService.UpdateTime(Time.time);
 
-                await saveService.LoadAsync(ct);
+                Result loadResult = await saveService.LoadAsync(ct);
+
+                if (loadResult.IsFailure)
+                {
+                    Debug.LogError(loadResult.Error.ToString(), this);
+                    return;
+                }
 
                 if (useAutoSave)
                     StartAutoSave();
@@ -133,7 +140,10 @@ namespace SWeetJelly.Save.Framework
 
                 saveService.UpdateTime(Time.time);
 
-                await saveService.SaveAsync(forceSave, ct);
+                Result saveResult = await saveService.SaveAsync(forceSave, ct);
+
+                if (saveResult.IsFailure)
+                    Debug.LogError(saveResult.Error.ToString(), this);
             }
             catch (OperationCanceledException)
             {
@@ -175,10 +185,13 @@ namespace SWeetJelly.Save.Framework
             {
                 saveService.UpdateTime(Time.time);
 
-                saveService
+                Result saveResult = saveService
                     .SaveAsync(true, CancellationToken.None)
                     .GetAwaiter()
                     .GetResult();
+
+                if (saveResult.IsFailure)
+                    Debug.LogError(saveResult.Error.ToString(), this);
             }
             catch (Exception ex)
             {

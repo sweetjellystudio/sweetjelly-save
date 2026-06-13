@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using SWeetJelly.Shared.Result;
 
 namespace SWeetJelly.Save.Contract
 {
@@ -13,14 +14,14 @@ namespace SWeetJelly.Save.Contract
         event EventHandler Saved;
         event EventHandler Deleted;
 
-        void Register(ISaveObject saveObject);
+        Result Register(ISaveObject saveObject);
         bool Unregister(SaveKey key);
 
         void MarkDirty();
 
-        Task LoadAsync(CancellationToken ct = default);
-        Task SaveAsync(CancellationToken ct = default);
-        Task SaveAsync(bool forceSave, CancellationToken ct = default);
+        Task<Result> LoadAsync(CancellationToken ct = default);
+        Task<Result> SaveAsync(CancellationToken ct = default);
+        Task<Result> SaveAsync(bool forceSave, CancellationToken ct = default);
 
         void Delete();
     }

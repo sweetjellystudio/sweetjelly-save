@@ -1,7 +1,9 @@
 {
     "name": "SWeetJelly.Save.Contract",
     "rootNamespace": "SWeetJelly.Save.Contract",
-    "references": [],
+    "references": [
+        "SWeetJelly.Shared.Result"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

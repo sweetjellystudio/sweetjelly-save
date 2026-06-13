@@ -8,6 +8,8 @@
 * [Added] Added global save data support for project-level save state.
 * [Added] Added Unity save driver support through `SaveBehaviour`.
 * [Added] Added Initialiser integration through `SaveInitModule`.
+* [Added] Added `SaveErrors` for package-owned save failure descriptions.
+* [Changed] `Register`, `LoadAsync`, and `SaveAsync` now return `Result` values.
 * [Changed] Moved save logic from the unclassified Core module into dedicated Save assemblies.
 * [Changed] Separated Save into `Contract`, `Domain`, `App`, `Framework`, and `InitialiserIntegration` layers.
 * [Changed] Delegated serialization and storage concerns to the Serialization package instead of keeping them directly inside Save.
