@@ -1,10 +1,11 @@
 {
-    "name": "SWeetJelly.Save.Framework",
-    "rootNamespace": "SWeetJelly.Save.Framework",
+    "name": "SWeetJelly.Save.Tests.PlayMode",
+    "rootNamespace": "SWeetJelly.Save.Tests.PlayMode",
     "references": [
         "SWeetJelly.Save.Contract",
         "SWeetJelly.Save.Domain",
         "SWeetJelly.Save.App",
+        "SWeetJelly.Save.Framework.Unity",
         "SWeetJelly.Serialization.Contract",
         "SWeetJelly.Shared.Result"
     ],
@@ -13,8 +14,11 @@
     "allowUnsafeCode": false,
     "overrideReferences": false,
     "precompiledReferences": [],
-    "autoReferenced": true,
+    "autoReferenced": false,
     "defineConstraints": [],
     "versionDefines": [],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
     "noEngineReferences": false
 }

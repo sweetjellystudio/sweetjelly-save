@@ -2,7 +2,8 @@ using System;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
-using SWeetJelly.Save.InitialiserIntegration;
+using SWeetJelly.Save.Framework.Bootstrapper;
+using SWeetJelly.Save.Framework.Unity;
 using System.Threading;
 
 namespace SWeetJelly.Save.Framework.Editor
@@ -28,7 +29,7 @@ namespace SWeetJelly.Save.Framework.Editor
         {
             get
             {
-                SaveInitModule module = FindSaveInitModule();
+                SavePackageBootstrapperSo module = FindSavePackageBootstrapperSo();
 
                 if (module == null || string.IsNullOrWhiteSpace(module.SaveFileName))
                     return DefaultSaveFileName;
@@ -47,7 +48,7 @@ namespace SWeetJelly.Save.Framework.Editor
         {
             get
             {
-                SaveInitModule module = FindSaveInitModule();
+                SavePackageBootstrapperSo module = FindSavePackageBootstrapperSo();
 
                 if (module == null || string.IsNullOrWhiteSpace(module.EditorStartScenePath))
                     return DefaultEditorStartScenePath;
@@ -56,14 +57,14 @@ namespace SWeetJelly.Save.Framework.Editor
             }
         }
 
-        public static SaveInitModule FindSaveInitModule()
+        public static SavePackageBootstrapperSo FindSavePackageBootstrapperSo()
         {
-            string[] guids = AssetDatabase.FindAssets("t:SaveInitModule");
+            string[] guids = AssetDatabase.FindAssets("t:SavePackageBootstrapperSo");
 
             for (int i = 0; i < guids.Length; i++)
             {
                 string path = AssetDatabase.GUIDToAssetPath(guids[i]);
-                SaveInitModule module = AssetDatabase.LoadAssetAtPath<SaveInitModule>(path);
+                SavePackageBootstrapperSo module = AssetDatabase.LoadAssetAtPath<SavePackageBootstrapperSo>(path);
 
                 if (module != null)
                     return module;

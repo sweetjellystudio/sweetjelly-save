@@ -2,7 +2,7 @@
 
 `SWeetJelly Save` is a Unity save package for capturing registered save objects, serializing them through `SWeetJelly.Serialization`, and restoring them on load.
 
-The package separates save state, save orchestration, Unity lifecycle handling, and Initialiser integration.
+The package separates save state, save orchestration, Unity lifecycle handling, and Bootstrapper integration.
 
 ## Purpose
 
@@ -14,7 +14,7 @@ Use this package when project systems need a shared save flow with:
 - dirty-state tracking
 - global save metadata such as level id, game time, and last exit time
 - automatic Unity lifecycle save support through `SaveBehaviour`
-- Initialiser integration through `SaveInitModule`
+- Bootstrapper integration through `SavePackageBootstrapperSo`
 
 The package does not implement low-level file serialization itself. It depends on `SWeetJelly.Serialization` through `ISerializationService`.
 
@@ -45,8 +45,8 @@ Runtime/
   Framework/
     SaveBehaviour.cs
 
-  InitialiserIntegration/
-    SaveInitModule.cs
+  Framework/Bootstrapper/
+    SavePackageBootstrapperSo.cs
 
 Editor/
   SaveActionsMenu.cs
@@ -94,13 +94,13 @@ Contains Unity lifecycle integration.
 
 - `SaveBehaviour`
 
-### `SWeetJelly.Save.InitialiserIntegration`
+### `SWeetJelly.Save.Framework.Bootstrapper`
 
-Connects Save to the Initialiser package.
+Connects Save to the Bootstrapper package.
 
-- `SaveInitModule`
+- `SavePackageBootstrapperSo`
 
-Note: the current assembly name is `SWeetJelly.Save.InitialiserIntegraion`.
+Note: the current assembly name is `SWeetJelly.Save.Framework.Bootstrapper`.
 
 ## Core Concepts
 
@@ -165,10 +165,10 @@ It stores:
 Most projects should resolve `ISaveService` from Initialiser.
 
 ```csharp
-using SWeetJelly.Initialiser.Framework;
+using SWeetJelly.Bootstrapper.Framework.Unity;
 using SWeetJelly.Save.Contract;
 
-var saveService = InitialiserBehaviour.Services.Resolve<ISaveService>();
+var saveService = BootstrapperBehaviour.Services.Resolve<ISaveService>();
 ```
 
 Then register save objects before or after load.
@@ -291,9 +291,9 @@ behaviour.Configure(
 behaviour.BeginLoad();
 ```
 
-## Initialiser Integration
+## Bootstrapper Integration
 
-`SaveInitModule` wires Save into the Initialiser system.
+`SavePackageBootstrapperSo` wires Save into the Bootstrapper system.
 
 On install it:
 
@@ -366,4 +366,4 @@ This package currently provides:
 - global save data model
 - save/load/delete service flow
 - Unity lifecycle save behaviour
-- Initialiser integration module
+- Bootstrapper integration module

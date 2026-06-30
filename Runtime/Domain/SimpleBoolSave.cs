@@ -1,4 +1,4 @@
-﻿using SWeetJelly.Save.Contract;
+using SWeetJelly.Save.Contract;
 
 namespace SWeetJelly.Save.Domain
 {
