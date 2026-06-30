@@ -1,0 +1,30 @@
+{
+    "name": "SWeetJelly.Save.Tests.EditMode",
+    "rootNamespace": "SWeetJelly.Save.Tests.EditMode",
+    "references": [
+        "SWeetJelly.Save.Contract",
+        "SWeetJelly.Save.Domain",
+        "SWeetJelly.Save.App",
+        "SWeetJelly.Save.Framework.Unity",
+        "SWeetJelly.Save.Framework.Bootstrapper",
+        "SWeetJelly.Serialization.Contract",
+        "SWeetJelly.Shared.Result",
+        "SWeetJelly.Bootstrapper.Contract",
+        "SWeetJelly.Bootstrapper.App",
+        "SWeetJelly.Bootstrapper.Framework.Unity"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "noEngineReferences": false
+}

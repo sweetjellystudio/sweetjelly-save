@@ -2,7 +2,7 @@
 
 `SWeetJelly Save`는 등록된 save object의 상태를 캡처하고, `SWeetJelly.Serialization`을 통해 직렬화한 뒤, 로드 시 다시 복원하는 Unity 저장 패키지입니다.
 
-이 패키지는 저장 상태, 저장 흐름, Unity 생명주기 처리, Initialiser 연동을 분리합니다.
+이 패키지는 저장 상태, 저장 흐름, Unity 생명주기 처리, Bootstrapper 연동을 분리합니다.
 
 ## 목적
 
@@ -14,7 +14,7 @@
 - dirty 상태 추적
 - level id, game time, last exit time 같은 전역 저장 메타데이터
 - `SaveBehaviour`를 통한 Unity 생명주기 자동 저장
-- `SaveInitModule`을 통한 Initialiser 연동
+- `SavePackageBootstrapperSo`을 통한 Bootstrapper 연동
 
 이 패키지는 저수준 파일 직렬화를 직접 구현하지 않습니다. `ISerializationService`를 통해 `SWeetJelly.Serialization`에 의존합니다.
 
@@ -45,8 +45,8 @@ Runtime/
   Framework/
     SaveBehaviour.cs
 
-  InitialiserIntegration/
-    SaveInitModule.cs
+  Framework/Bootstrapper/
+    SavePackageBootstrapperSo.cs
 
 Editor/
   SaveActionsMenu.cs
@@ -94,13 +94,13 @@ Unity 생명주기 연동을 포함합니다.
 
 - `SaveBehaviour`
 
-### `SWeetJelly.Save.InitialiserIntegration`
+### `SWeetJelly.Save.Framework.Bootstrapper`
 
-Save를 Initialiser 패키지에 연결합니다.
+Save를 Bootstrapper 패키지에 연결합니다.
 
-- `SaveInitModule`
+- `SavePackageBootstrapperSo`
 
-참고: 현재 어셈블리 이름은 `SWeetJelly.Save.InitialiserIntegraion`입니다.
+참고: 현재 어셈블리 이름은 `SWeetJelly.Save.Framework.Bootstrapper`입니다.
 
 ## 핵심 개념
 
@@ -165,10 +165,10 @@ int currentCoins = coins.Value;
 대부분의 프로젝트는 Initialiser에서 `ISaveService`를 resolve해서 사용합니다.
 
 ```csharp
-using SWeetJelly.Initialiser.Framework;
+using SWeetJelly.Bootstrapper.Framework.Unity;
 using SWeetJelly.Save.Contract;
 
-var saveService = InitialiserBehaviour.Services.Resolve<ISaveService>();
+var saveService = BootstrapperBehaviour.Services.Resolve<ISaveService>();
 ```
 
 로드 전이나 후에 save object를 등록합니다.
@@ -291,9 +291,9 @@ behaviour.Configure(
 behaviour.BeginLoad();
 ```
 
-## Initialiser 연동
+## Bootstrapper 연동
 
-`SaveInitModule`은 Save를 Initialiser 시스템에 연결합니다.
+`SavePackageBootstrapperSo`은 Save를 Initialiser 시스템에 연결합니다.
 
 설치 시 수행하는 작업:
 
@@ -366,4 +366,4 @@ var result = saveService.Register(new PlayerPositionSave("player.position", play
 - global save data model
 - save/load/delete service flow
 - Unity lifecycle save behaviour
-- Initialiser integration module
+- Bootstrapper integration module

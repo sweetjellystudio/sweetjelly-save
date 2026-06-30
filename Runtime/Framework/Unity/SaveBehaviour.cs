@@ -6,7 +6,7 @@ using SWeetJelly.Save.App;
 using SWeetJelly.Shared.Result;
 using UnityEngine;
 
-namespace SWeetJelly.Save.Framework
+namespace SWeetJelly.Save.Framework.Unity
 {
     public sealed class SaveBehaviour : MonoBehaviour
     {

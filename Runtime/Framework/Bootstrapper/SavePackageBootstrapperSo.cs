@@ -1,18 +1,16 @@
-using SWeetJelly.Initialiser.Contract;
-using SWeetJelly.Initialiser.Framework;
+﻿using SWeetJelly.Bootstrapper.Framework.Unity;
 using SWeetJelly.Save.App;
 using SWeetJelly.Save.Contract;
 using SWeetJelly.Serialization.Contract;
-using SWeetJelly.Save.Framework;
+using SWeetJelly.Save.Framework.Unity;
 using UnityEngine;
 
-namespace SWeetJelly.Save.InitialiserIntegration
+namespace SWeetJelly.Save.Framework.Bootstrapper
 {
-    [RegisterModule("Save")]
     [CreateAssetMenu(
-        fileName = "Save Init Module",
-        menuName = "SWeetJelly/Initialiser/Modules/Save")]
-    public sealed class SaveInitModule : InitModuleSo
+        fileName = "Save Package Bootstrapper",
+        menuName = "SWeetJelly/Bootstrapper/Packages/Save")]
+    public sealed class SavePackageBootstrapperSo : PackageBootstrapperSo
     {
         private const SerializationFormat SaveFormat = SerializationFormat.Json;
         private const SerializationFormat EntryFormat = SerializationFormat.Json;
@@ -37,9 +35,9 @@ namespace SWeetJelly.Save.InitialiserIntegration
         [SerializeField] private bool saveOnApplicationPause = true;
         [SerializeField] private bool saveOnApplicationQuit = true;
 
-        public override string ModuleName => "Save";
+        public override string PackageName => "Save";
 
-        public override void Install(InitModuleInstallContext context)
+        public override void Bootstrap(PackageBootstrapContext context)
         {
             if (context == null)
                 throw new System.ArgumentNullException(nameof(context));

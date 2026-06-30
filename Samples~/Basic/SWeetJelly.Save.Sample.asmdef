@@ -1,13 +1,12 @@
 {
-    "name": "SWeetJelly.Save.InitialiserIntegraion",
-    "rootNamespace": "SWeetJelly.Save.InitialiserIntegraion",
+    "name": "SWeetJelly.Save.Sample",
+    "rootNamespace": "SWeetJelly.Samples.Save",
     "references": [
-        "SWeetJelly.Save.App",
-        "SWeetJelly.Save.Framework",
-        "SWeetJelly.Initialiser.Contract",
-        "SWeetJelly.Initialiser.Framework",
+        "SWeetJelly.Bootstrapper.Contract",
+        "SWeetJelly.Bootstrapper.Framework.Unity",
         "SWeetJelly.Save.Contract",
-        "SWeetJelly.Serialization.Contract"
+        "SWeetJelly.Save.Domain",
+        "SWeetJelly.Shared.Result"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -2,9 +2,9 @@
     "name": "SWeetJelly.Save.Framework.Editor",
     "rootNamespace": "SWeetJelly.Save.Framework.Editor",
     "references": [
-        "SWeetJelly.Save.InitialiserIntegraion",
-        "SWeetJelly.Save.Framework",
-        "SWeetJelly.Initialiser.Framework"
+        "SWeetJelly.Save.Framework.Bootstrapper",
+        "SWeetJelly.Save.Framework.Unity",
+        "SWeetJelly.Bootstrapper.Framework.Unity"
     ],
     "includePlatforms": [
         "Editor"
