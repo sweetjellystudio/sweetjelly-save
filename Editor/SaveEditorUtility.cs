@@ -1,145 +1,59 @@
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 using SWeetJelly.Save.Framework.Bootstrapper;
 using SWeetJelly.Save.Framework.Unity;
-using System.Threading;
 
 namespace SWeetJelly.Save.Framework.Editor
 {
     internal static class SaveEditorUtility
     {
-        public const string DefaultSaveFileName = "save.json";
         public const string LegacySaveFileName = "save";
-
         public const string PresetsFolderName = "SavePresets";
         public const string PresetPrefix = "savePreset_";
         public const string PresetsOrderFile = "presetsOrderFile";
-
-        private const string DefaultEditorStartScenePath =
-            "Assets/Project/Content/Scenes/Init.unity";
-
         public static string PersistentDataPath => Application.persistentDataPath;
-
-        public static string PresetsDirectoryPath =>
-            Path.Combine(PersistentDataPath, PresetsFolderName);
-
-        public static string SaveFileName
+        public static string PresetsDirectoryPath => Path.Combine(PersistentDataPath, PresetsFolderName);
+        public static string GetSavePath(SavePackageBootstrapperSo target)
         {
-            get
-            {
-                SavePackageBootstrapperSo module = FindSavePackageBootstrapperSo();
+            if (target == null) throw new InvalidOperationException("Select a Save bootstrap asset.");
+            return Path.Combine(PersistentDataPath, ValidateFileName(target.SaveFileName));
+        }
+        public static string ValidateFileName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name) || name != Path.GetFileName(name)
+                || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || name == "." || name == ".."
+                || name.EndsWith(".") || name.EndsWith(" ") || name.Contains("/") || name.Contains("\\"))
+                throw new ArgumentException("Use a plain file name without directory separators or invalid characters.");
+            return name;
+        }
+        public static void EnsurePresetsDirectory() => Directory.CreateDirectory(PresetsDirectoryPath);
+        public static string GetPresetPath(string name) => Path.Combine(PresetsDirectoryPath, PresetPrefix + ValidateFileName(name));
+        public static string GetOrderFilePath() => Path.Combine(PresetsDirectoryPath, PresetsOrderFile);
 
-                if (module == null || string.IsNullOrWhiteSpace(module.SaveFileName))
-                    return DefaultSaveFileName;
-
-                return module.SaveFileName;
-            }
+        public static async Task<bool> TryForceSaveInPlayModeAsync(SavePackageBootstrapperSo target, SaveBehaviour driver)
+        {
+            GetSavePath(target);
+            if (!EditorApplication.isPlaying) return true;
+            if (driver == null || !driver.IsConstructed || driver.SaveFileName != target.SaveFileName)
+                throw new InvalidOperationException("Select the running save driver for the selected save file.");
+            var result = await driver.ForceSaveFromDriverAsync();
+            if (result.IsFailure) Debug.LogError(result.Error.ToString());
+            return result.IsSuccess;
         }
 
-        public static string SaveFilePath =>
-            Path.Combine(PersistentDataPath, SaveFileName);
-
-        public static string LegacySaveFilePath =>
-            Path.Combine(PersistentDataPath, LegacySaveFileName);
-
-        public static string EditorStartScenePath
+        public static void MigrateLegacyPresets()
         {
-            get
+            EnsurePresetsDirectory();
+            foreach (var source in Directory.GetFiles(PersistentDataPath))
             {
-                SavePackageBootstrapperSo module = FindSavePackageBootstrapperSo();
-
-                if (module == null || string.IsNullOrWhiteSpace(module.EditorStartScenePath))
-                    return DefaultEditorStartScenePath;
-
-                return module.EditorStartScenePath;
+                var name = Path.GetFileName(source);
+                if (!name.StartsWith(PresetPrefix, StringComparison.Ordinal) && name != PresetsOrderFile) continue;
+                var destination = Path.Combine(PresetsDirectoryPath, name);
+                if (!File.Exists(destination)) File.Move(source, destination);
             }
-        }
-
-        public static SavePackageBootstrapperSo FindSavePackageBootstrapperSo()
-        {
-            string[] guids = AssetDatabase.FindAssets("t:SavePackageBootstrapperSo");
-
-            for (int i = 0; i < guids.Length; i++)
-            {
-                string path = AssetDatabase.GUIDToAssetPath(guids[i]);
-                SavePackageBootstrapperSo module = AssetDatabase.LoadAssetAtPath<SavePackageBootstrapperSo>(path);
-
-                if (module != null)
-                    return module;
-            }
-
-            return null;
-        }
-
-        public static void EnsurePresetsDirectory()
-        {
-            if (!Directory.Exists(PresetsDirectoryPath))
-                Directory.CreateDirectory(PresetsDirectoryPath);
-        }
-
-        public static string GetPresetPath(string presetName)
-        {
-            return Path.Combine(
-                PresetsDirectoryPath,
-                PresetPrefix + presetName);
-        }
-
-        public static string GetOrderFilePath()
-        {
-            return Path.Combine(
-                PresetsDirectoryPath,
-                PresetsOrderFile);
-        }
-
-        public static bool TryForceSaveInPlayMode()
-        {
-            if (!EditorApplication.isPlaying)
-                return true;
-
-            SaveBehaviour saveBehaviour = UnityEngine.Object.FindObjectOfType<SaveBehaviour>();
-
-            if (saveBehaviour == null)
-            {
-                Debug.LogError("[Save Editor] SaveBehaviour was not found in the current scene.");
-                return false;
-            }
-
-            try
-            {
-                saveBehaviour
-                    .ForceSaveFromDriverAsync(CancellationToken.None)
-                    .GetAwaiter()
-                    .GetResult();
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Debug.LogException(ex);
-                return false;
-            }
-        }
-
-        public static bool DeleteCurrentSaveFile()
-        {
-            bool deleted = false;
-
-            if (File.Exists(SaveFilePath))
-            {
-                File.Delete(SaveFilePath);
-                deleted = true;
-            }
-
-            // 기존 구조의 save 파일도 같이 정리.
-            if (File.Exists(LegacySaveFilePath))
-            {
-                File.Delete(LegacySaveFilePath);
-                deleted = true;
-            }
-
-            return deleted;
         }
     }
 }

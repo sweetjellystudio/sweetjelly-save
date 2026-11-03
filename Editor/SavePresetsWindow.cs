@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
+using SWeetJelly.Save.Framework.Bootstrapper;
+using SWeetJelly.Save.Framework.Unity;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEditorInternal;
@@ -20,6 +23,10 @@ namespace SWeetJelly.Save.Framework.Editor
 
         private readonly List<SavePreset> savePresets = new();
 
+        [SerializeField] private SavePackageBootstrapperSo target;
+        [SerializeField] private SaveBehaviour runtimeDriver;
+        private bool busy;
+        private bool playAfterApply;
         private Vector2 scrollView;
         private string tempPresetName = string.Empty;
         private ReorderableList savePresetsList;
@@ -58,7 +65,7 @@ namespace SWeetJelly.Save.Framework.Editor
             savePresets.Clear();
 
             SaveEditorUtility.EnsurePresetsDirectory();
-            MigrateLegacyPresetFiles();
+
 
             List<SavePreset> unsortedPresets = new();
 
@@ -83,35 +90,6 @@ namespace SWeetJelly.Save.Framework.Editor
             }
 
             ApplySavedOrder(unsortedPresets, order);
-        }
-
-        private void MigrateLegacyPresetFiles()
-        {
-            string[] rootFiles = Directory.GetFiles(SaveEditorUtility.PersistentDataPath);
-
-            for (int i = 0; i < rootFiles.Length; i++)
-            {
-                string file = rootFiles[i];
-                string fileName = Path.GetFileName(file);
-
-                if (fileName.StartsWith(SaveEditorUtility.PresetPrefix, StringComparison.Ordinal))
-                {
-                    string destination = Path.Combine(
-                        SaveEditorUtility.PresetsDirectoryPath,
-                        fileName);
-
-                    if (!File.Exists(destination))
-                        File.Move(file, destination);
-                }
-
-                if (fileName == SaveEditorUtility.PresetsOrderFile)
-                {
-                    string destination = SaveEditorUtility.GetOrderFilePath();
-
-                    if (!File.Exists(destination))
-                        File.Move(file, destination);
-                }
-            }
         }
 
         private void ApplySavedOrder(
@@ -160,15 +138,15 @@ namespace SWeetJelly.Save.Framework.Editor
                     "Cancel");
 
                 if (confirmed)
-                    UpdatePreset(preset);
+                    RunOperation(() => UpdatePresetAsync(preset));
             }
 
             workRect.x -= ActivateButtonWidth + DefaultSpace;
             workRect.width = ActivateButtonWidth;
 
-            if (GUI.Button(workRect, "Activate"))
+            if (GUI.Button(workRect, "Apply"))
             {
-                ActivatePreset(preset.Name);
+                RunOperation(() => { ActivatePreset(preset.Name); return Task.CompletedTask; });
             }
 
             workRect.x -= DateLabelWidth + DefaultSpace;
@@ -215,15 +193,15 @@ namespace SWeetJelly.Save.Framework.Editor
             savePresets.RemoveAt(index);
         }
 
-        private void UpdatePreset(SavePreset preset)
+        private async Task UpdatePresetAsync(SavePreset preset)
         {
             if (preset == null)
                 return;
 
-            if (!SaveEditorUtility.TryForceSaveInPlayMode())
+            if (!await SaveEditorUtility.TryForceSaveInPlayModeAsync(target, runtimeDriver))
                 return;
 
-            string savePath = SaveEditorUtility.SaveFilePath;
+            string savePath = SaveEditorUtility.GetSavePath(target);
 
             if (!File.Exists(savePath))
             {
@@ -253,6 +231,14 @@ namespace SWeetJelly.Save.Framework.Editor
                 return;
             }
 
+            string scenePath = target.EditorStartScenePath;
+            if (playAfterApply)
+            {
+                if (string.IsNullOrWhiteSpace(scenePath) || !scenePath.EndsWith(".unity") || AssetDatabase.LoadAssetAtPath<SceneAsset>(scenePath) == null)
+                    throw new InvalidOperationException("Select a valid start scene on the bootstrap asset before Apply and Play.");
+                if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            }
+
             string presetPath = SaveEditorUtility.GetPresetPath(presetName);
 
             if (!File.Exists(presetPath))
@@ -261,23 +247,16 @@ namespace SWeetJelly.Save.Framework.Editor
                 return;
             }
 
-            string savePath = SaveEditorUtility.SaveFilePath;
+            string savePath = SaveEditorUtility.GetSavePath(target);
             Directory.CreateDirectory(Path.GetDirectoryName(savePath));
 
             File.Copy(presetPath, savePath, true);
 
-            string scenePath = SaveEditorUtility.EditorStartScenePath;
-
-            if (!string.IsNullOrWhiteSpace(scenePath) && File.Exists(scenePath))
+            if (playAfterApply)
             {
                 EditorSceneManager.OpenScene(scenePath);
+                EditorApplication.isPlaying = true;
             }
-            else
-            {
-                Debug.LogWarning($"[Save Presets] Start scene path is invalid: {scenePath}");
-            }
-
-            EditorApplication.isPlaying = true;
         }
 
         private void SaveListOrder()
@@ -296,7 +275,9 @@ namespace SWeetJelly.Save.Framework.Editor
         {
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
+            EditorGUI.BeginDisabledGroup(busy);
             DrawToolbar();
+            EditorGUI.BeginDisabledGroup(target == null);
 
             scrollView = EditorGUILayout.BeginScrollView(scrollView);
             savePresetsList?.DoLayoutList();
@@ -306,6 +287,8 @@ namespace SWeetJelly.Save.Framework.Editor
 
             DrawAddPresetArea();
 
+            EditorGUI.EndDisabledGroup();
+            EditorGUI.EndDisabledGroup();
             EditorGUILayout.EndVertical();
         }
 
@@ -326,9 +309,27 @@ namespace SWeetJelly.Save.Framework.Editor
 
             EditorGUILayout.EndHorizontal();
 
-            EditorGUILayout.HelpBox(
-                $"Save file: {SaveEditorUtility.SaveFilePath}",
-                MessageType.Info);
+            target = (SavePackageBootstrapperSo)EditorGUILayout.ObjectField("Save target", target, typeof(SavePackageBootstrapperSo), false);
+            if (EditorApplication.isPlaying)
+                runtimeDriver = (SaveBehaviour)EditorGUILayout.ObjectField("Running driver", runtimeDriver, typeof(SaveBehaviour), true);
+            playAfterApply = EditorGUILayout.Toggle("Apply and Play", playAfterApply);
+            EditorGUILayout.HelpBox(target == null ? "Select a Save bootstrap asset. Opening this window does not migrate files."
+                : "Save file: " + target.SaveFileName, MessageType.Info);
+            using (new EditorGUI.DisabledScope(EditorApplication.isPlayingOrWillChangePlaymode))
+            {
+                if (GUILayout.Button("Migrate legacy presets"))
+                    RunOperation(() => { SaveEditorUtility.MigrateLegacyPresets(); ReloadPresets(); return Task.CompletedTask; });
+                if (target != null && GUILayout.Button("Migrate legacy save to selected target"))
+                    RunOperation(() =>
+                    {
+                        string source = Path.Combine(SaveEditorUtility.PersistentDataPath, SaveEditorUtility.LegacySaveFileName);
+                        string destination = SaveEditorUtility.GetSavePath(target);
+                        if (File.Exists(destination)) throw new IOException("Destination already exists; no files changed.");
+                        if (EditorUtility.DisplayDialog("Migrate legacy save", source + "\nCopy to: " + destination + "? Source is kept.", "Copy", "Cancel"))
+                            File.Copy(source, destination, false);
+                        return Task.CompletedTask;
+                    });
+            }
         }
 
         private void DrawAddPresetArea()
@@ -339,7 +340,8 @@ namespace SWeetJelly.Save.Framework.Editor
 
             if (GUILayout.Button("Add", GUILayout.Width(80f)))
             {
-                AddPreset(tempPresetName);
+                string name = tempPresetName;
+                RunOperation(() => AddPresetAsync(name));
                 tempPresetName = string.Empty;
                 GUI.FocusControl(null);
             }
@@ -347,7 +349,7 @@ namespace SWeetJelly.Save.Framework.Editor
             EditorGUILayout.EndHorizontal();
         }
 
-        private void AddPreset(string presetName)
+        private async Task AddPresetAsync(string presetName)
         {
             if (string.IsNullOrWhiteSpace(presetName))
             {
@@ -355,16 +357,17 @@ namespace SWeetJelly.Save.Framework.Editor
                 return;
             }
 
+            SaveEditorUtility.ValidateFileName(presetName);
             if (savePresets.Exists(preset => preset.Name == presetName))
             {
                 Debug.LogError($"[Save Presets] Preset already exists: {presetName}");
                 return;
             }
 
-            if (!SaveEditorUtility.TryForceSaveInPlayMode())
+            if (!await SaveEditorUtility.TryForceSaveInPlayModeAsync(target, runtimeDriver))
                 return;
 
-            string savePath = SaveEditorUtility.SaveFilePath;
+            string savePath = SaveEditorUtility.GetSavePath(target);
 
             if (!File.Exists(savePath))
             {
@@ -387,6 +390,15 @@ namespace SWeetJelly.Save.Framework.Editor
             Repaint();
         }
 
+        private async void RunOperation(Func<Task> action)
+        {
+            if (busy) return;
+            busy = true;
+            try { await action(); }
+            catch (Exception e) { Debug.LogException(e); }
+            finally { busy = false; if (this != null) Repaint(); }
+        }
+
         private void OnDestroy()
         {
             SaveListOrder();
@@ -402,9 +414,7 @@ namespace SWeetJelly.Save.Framework.Editor
             {
                 CreationDate = creationDate;
                 Path = path;
-                Name = System.IO.Path
-                    .GetFileName(path)
-                    .Replace(SaveEditorUtility.PresetPrefix, string.Empty);
+                Name = System.IO.Path.GetFileName(path).Substring(SaveEditorUtility.PresetPrefix.Length);
             }
         }
     }

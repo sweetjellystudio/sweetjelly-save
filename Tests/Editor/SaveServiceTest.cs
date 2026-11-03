@@ -63,8 +63,7 @@ namespace SWeetJelly.Save.Tests.EditMode
         public void SaveAsync_WhenDirty_CapturesRegisteredObjectsAndRaisesSaved()
         {
             var serializer = new FakeSerializationService();
-            var now = new DateTime(2026, 6, 4, 12, 0, 0);
-            var service = CreateService(serializer, () => now);
+            var service = CreateService(serializer);
             var coins = new SimpleIntSave("coins", 7);
             var savedCount = 0;
 
@@ -74,7 +73,6 @@ namespace SWeetJelly.Save.Tests.EditMode
 
             coins.Set(99);
             service.MarkDirty();
-            service.UpdateTime(5f);
             var saveResult = service.SaveAsync().GetAwaiter().GetResult();
 
             Assert.That(saveResult.IsSuccess, Is.True);
@@ -84,8 +82,6 @@ namespace SWeetJelly.Save.Tests.EditMode
             Assert.That(serializer.StoredSave.SavedData.Entries.Count, Is.EqualTo(1));
             Assert.That(serializer.StoredSave.SavedData.Entries[0].Key, Is.EqualTo("coins"));
             Assert.That(serializer.StoredSave.SavedData.Entries[0].SerializedValue, Is.EqualTo("99"));
-            Assert.That(serializer.StoredSave.LastExitTime, Is.EqualTo(now));
-            Assert.That(serializer.StoredSave.SavedGameTime, Is.EqualTo(5f).Within(0.0001f));
         }
 
         [Test]
@@ -121,7 +117,7 @@ namespace SWeetJelly.Save.Tests.EditMode
 
             service.Deleted += (_, _) => deletedCount++;
             Assert.That(service.LoadAsync().GetAwaiter().GetResult().IsSuccess, Is.True);
-            service.Delete();
+            Assert.That(service.DeleteAsync().GetAwaiter().GetResult().IsSuccess, Is.True);
 
             Assert.That(serializer.DeleteCallCount, Is.EqualTo(1));
             Assert.That(service.IsLoaded, Is.False);
@@ -154,15 +150,13 @@ namespace SWeetJelly.Save.Tests.EditMode
         }
 
         private static SaveService CreateService(
-            FakeSerializationService serializer,
-            Func<DateTime> nowProvider = null)
+            FakeSerializationService serializer)
         {
             return new SaveService(
                 serializer,
                 "save.json",
                 SerializationFormat.Json,
-                SerializationFormat.Json,
-                nowProvider);
+                SerializationFormat.Json);
         }
 
         private static TException AssertThrows<TException>(Action action)
@@ -204,7 +198,11 @@ namespace SWeetJelly.Save.Tests.EditMode
         public int SaveCallCount { get; private set; }
         public int DeleteCallCount { get; private set; }
 
-        public Task<Result> SaveToPersistentDataPathAsync<T>(
+        public TaskCompletionSource<bool> WriteGate;
+        public bool FailWrite;
+        public bool ThrowDelete;
+
+        public async Task<Result> SaveToPersistentDataPathAsync<T>(
             T value,
             string fileName,
             SerializationFormat format,
@@ -212,8 +210,11 @@ namespace SWeetJelly.Save.Tests.EditMode
         {
             ct.ThrowIfCancellationRequested();
             SaveCallCount++;
+            if (WriteGate != null) await WriteGate.Task;
+            ct.ThrowIfCancellationRequested();
+            if (FailWrite) return Result.Failure(new Error("Fake.Write", "Failed"));
             StoredSave = value as GlobalSaveData;
-            return Task.FromResult(Result.Success());
+            return Result.Success();
         }
 
         public Task<Result<T>> LoadFromPersistentDataPathAsync<T>(
@@ -251,6 +252,7 @@ namespace SWeetJelly.Save.Tests.EditMode
 
         public void DeleteAtPersistentDataPath(string fileName)
         {
+            if (ThrowDelete) throw new System.IO.IOException("delete failed");
             DeleteCallCount++;
             StoredSave = null;
         }

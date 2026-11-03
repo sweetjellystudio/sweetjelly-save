@@ -10,6 +10,8 @@ namespace SWeetJelly.Samples.Save
     public sealed class SaveSampleConsumerBehaviour : MonoBehaviour
     {
         private ISaveService saveService;
+        private bool ownsCoins;
+        private bool ownsName;
         private SimpleIntSave coins;
         private SimpleStringSave playerName;
         private string status = "Waiting for Save service...";
@@ -57,14 +59,18 @@ namespace SWeetJelly.Samples.Save
                 return;
             }
 
+            ownsCoins = true;
             Result playerNameRegisterResult = saveService.Register(playerName);
 
             if (playerNameRegisterResult.IsFailure)
             {
+                saveService.Unregister(coins.Key);
+                ownsCoins = false;
                 status = $"Register player name failed: {playerNameRegisterResult.Error}";
                 return;
             }
 
+            ownsName = true;
             status = saveService.IsLoaded
                 ? "Save service is ready."
                 : "Save service is registered. Waiting for load.";
@@ -78,6 +84,10 @@ namespace SWeetJelly.Samples.Save
             saveService.Loaded -= OnLoaded;
             saveService.Saved -= OnSaved;
             saveService.Deleted -= OnDeleted;
+            if (ownsCoins) saveService.Unregister(coins.Key);
+            if (ownsName) saveService.Unregister(playerName.Key);
+            ownsCoins = ownsName = false;
+            saveService = null;
         }
 
         private void OnLoaded(object sender, EventArgs args)
@@ -150,9 +160,19 @@ namespace SWeetJelly.Samples.Save
             y += 34f;
 
             if (GUI.Button(new Rect(x, y, 190f, 28f), "Delete"))
-                saveService.Delete();
+                Delete();
 
             GUI.enabled = true;
+        }
+
+        private async void Delete()
+        {
+            try
+            {
+                var result = await saveService.DeleteAsync();
+                if (result.IsFailure) status = $"Delete failed: {result.Error}";
+            }
+            catch (Exception e) { status = e.Message; Debug.LogException(e, this); }
         }
 
         private async void Load()

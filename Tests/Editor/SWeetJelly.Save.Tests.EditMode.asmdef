@@ -11,7 +11,9 @@
         "SWeetJelly.Shared.Result",
         "SWeetJelly.Bootstrapper.Contract",
         "SWeetJelly.Bootstrapper.App",
-        "SWeetJelly.Bootstrapper.Framework.Unity"
+        "SWeetJelly.Bootstrapper.Framework.Unity",
+        "SWeetJelly.Serialization.App",
+        "SWeetJelly.Serialization.Framework.Serialization"
     ],
     "includePlatforms": [
         "Editor"

@@ -23,6 +23,8 @@ namespace SWeetJelly.Save.Contract
         Task<Result> SaveAsync(CancellationToken ct = default);
         Task<Result> SaveAsync(bool forceSave, CancellationToken ct = default);
 
-        void Delete();
+        Task<Result> DeleteKeyAsync(SaveKey key, CancellationToken ct = default);
+
+        Task<Result> DeleteAsync(CancellationToken ct = default);
     }
 }

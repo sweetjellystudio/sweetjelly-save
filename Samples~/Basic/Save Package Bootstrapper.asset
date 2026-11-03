@@ -1,4 +1,4 @@
-﻿%YAML 1.1
+%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3690586c72deb274fa85001b756fa744, type: 3}
   m_Name: Save Package Bootstrapper
   m_EditorClassIdentifier: 
-  installOrder: 100
+  bootstrapOrder: 200
   saveFileName: save-sample.json
-  editorStartScenePath: Packages/com.sweetjelly.save/Samples~/Basic/Sample Scene.unity
+  editorStartScenePath: Assets/Samples/SWeetJelly Save/2.0.0/Save Sample/Sample Scene.unity
   useAutoSave: 0
   autoSaveInterval: 30
   saveOnApplicationPause: 0

@@ -4,7 +4,8 @@
     "references": [
         "SWeetJelly.Save.Framework.Bootstrapper",
         "SWeetJelly.Save.Framework.Unity",
-        "SWeetJelly.Bootstrapper.Framework.Unity"
+        "SWeetJelly.Bootstrapper.Framework.Unity",
+        "SWeetJelly.Shared.Result"
     ],
     "includePlatforms": [
         "Editor"

@@ -12,4 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e4007fb43880c854da3c0451d834c0ab, type: 3}
   m_Name: Serialization Package Bootstrapper
   m_EditorClassIdentifier: 
-  installOrder: 90
+  bootstrapOrder: 100

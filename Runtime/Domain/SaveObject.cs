@@ -29,6 +29,12 @@ namespace SWeetJelly.Save.Domain
 
         public void RestoreUntyped(object value)
         {
+            if (value == null && default(T) is null)
+            {
+                Restore(default);
+                return;
+            }
+
             if (value is T typed)
             {
                 Restore(typed);
