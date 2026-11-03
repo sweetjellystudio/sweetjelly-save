@@ -1,31 +1,22 @@
-﻿{
-    "name":  "SWeetJelly.Save.Framework.Bootstrapper",
-    "rootNamespace":  "SWeetJelly.Save.Framework.Bootstrapper",
-    "references":  [
-                       "SWeetJelly.Bootstrapper.Contract",
-                       "SWeetJelly.Bootstrapper.Framework.Unity",
-                       "SWeetJelly.Save.Contract",
-                       "SWeetJelly.Save.App",
-                       "SWeetJelly.Save.Framework.Unity",
-                       "SWeetJelly.Serialization.Contract"
-                   ],
-    "includePlatforms":  [
-
-                         ],
-    "excludePlatforms":  [
-
-                         ],
-    "allowUnsafeCode":  false,
-    "overrideReferences":  false,
-    "precompiledReferences":  [
-
-                              ],
-    "autoReferenced":  true,
-    "defineConstraints":  [
-
-                          ],
-    "versionDefines":  [
-
-                       ],
-    "noEngineReferences":  false
+{
+    "name": "SWeetJelly.Save.Framework.Bootstrapper",
+    "rootNamespace": "SWeetJelly.Save.Framework.Bootstrapper",
+    "references": [
+        "SWeetJelly.Bootstrapper.Contract",
+        "SWeetJelly.Bootstrapper.Framework.Unity",
+        "SWeetJelly.Save.Contract",
+        "SWeetJelly.Save.App",
+        "SWeetJelly.Save.Framework.Unity",
+        "SWeetJelly.Serialization.Contract",
+        "SWeetJelly.Serialization.Framework.Unity"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
 }

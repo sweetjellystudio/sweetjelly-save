@@ -53,8 +53,50 @@ namespace SWeetJelly.Save.Tests.PlayMode
             }
         }
 
+        [UnityTest]
+        public IEnumerator BeginLoad_IsIdempotent_AndShutdownAllowsReconstruction()
+        {
+            var holder = new GameObject("lifetime");
+            var driver = holder.AddComponent<SWeetJelly.Save.Framework.Unity.SaveBehaviour>();
+            var fake = new FakeSerializationService(); var service = new SaveService(fake, "test");
+            int loaded = 0; service.Loaded += (_,__) => loaded++;
+            try
+            {
+                driver.Configure(false, 0, false, false); driver.Construct(service);
+                driver.BeginLoad(); driver.BeginLoad(); yield return null;
+                Assert.That(loaded, Is.EqualTo(1));
+                Assert.Throws<InvalidOperationException>(() => driver.Construct(service));
+                driver.Shutdown(); Assert.That(driver.IsConstructed, Is.False);
+                driver.Construct(new SaveService(fake,"test")); driver.BeginLoad();
+                var saved=driver.ForceSaveFromDriverAsync(); while(!saved.IsCompleted) yield return null;
+                Assert.That(saved.Result.IsSuccess, Is.True);
+                driver.Shutdown(); driver.Shutdown();
+            }
+            finally { UnityEngine.Object.Destroy(holder); }
+        }
+
+        [UnityTest]
+        public IEnumerator ForceSave_ReportsWriteFailureInsteadOfFalseSuccess()
+        {
+            var holder=new GameObject("failure");
+            var driver=holder.AddComponent<SWeetJelly.Save.Framework.Unity.SaveBehaviour>();
+            var fake=new FakeSerializationService { FailWrite = true }; var service=new SaveService(fake,"test");
+            try
+            {
+                driver.Configure(false,0,false,false);driver.Construct(service);driver.BeginLoad();
+                LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("Fake.Write"));
+                var task=driver.ForceSaveFromDriverAsync();while(!task.IsCompleted)yield return null;
+                Assert.That(task.Result.IsFailure,Is.True);
+                fake.FailWrite=false;
+                task=driver.ForceSaveFromDriverAsync();while(!task.IsCompleted)yield return null;
+                Assert.That(task.Result.IsSuccess,Is.True);
+            }
+            finally { UnityEngine.Object.Destroy(holder); }
+        }
+
         private sealed class FakeSerializationService : ISerializationService
         {
+            public bool FailWrite;
             public int SaveCallCount { get; private set; }
             private GlobalSaveData storedSave;
 
@@ -66,6 +108,7 @@ namespace SWeetJelly.Save.Tests.PlayMode
             {
                 ct.ThrowIfCancellationRequested();
                 SaveCallCount++;
+                if (FailWrite) return Task.FromResult(Result.Failure(new Error("Fake.Write", "Failed")));
                 storedSave = value as GlobalSaveData;
                 return Task.FromResult(Result.Success());
             }

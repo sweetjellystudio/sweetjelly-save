@@ -1,15 +1,5 @@
-# Save Dev Sample
+#   Save sample
 
-This sample shows the consumer-side flow for `com.sweetjelly.save`.
+Import Save Sample, open Sample Scene and enter Play Mode. The profile orders Serialization before Save (100 then 200). The consumer registers its own keyed values, changes and marks them dirty, saves/loads, and demonstrates force save and asynchronous deletion. Disabling and enabling it releases and restores its registrations.
 
-Save is different from Serialization:
-
-- Serialization converts objects to JSON/XML and reads/writes bytes.
-- Save registers save objects, captures/restores their values by `SaveKey`, tracks dirty state, and manages load/save/delete flow.
-- Save depends on `ISerializationService`, so the sample installs Serialization before Save.
-
-## Setup
-
-Open `Sample Scene` and enter Play Mode.
-
-Use the on-screen buttons to change registered save objects, mark the save dirty, save, load, and delete save data.
+The bootstrap uses save-sample.json. Save Presets requires an explicitly selected bootstrap and, in Play Mode, its running driver. The sample start scene is set to the default import path; update that field if importing to another folder. Apply leaves the Editor stopped; Apply and Play opens that explicit scene. Legacy migration and PlayerPrefs reset are separate actions.

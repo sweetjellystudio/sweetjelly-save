@@ -1,4 +1,15 @@
-# CHANGELOG
+#   Changelog
+
+##  2.0.0
+
+*   Require Unity 6.3 LTS and Bootstrapper, Serialization and Shared 2.0.0; remove unused Utils dependency.
+*   Remove game metadata and clock APIs while preserving the generic version 1 entry document and old JSON/XML reads.
+*   Preserve unknown entries, serialize load/save/delete requests, retain dirty revisions during IO and await real force writes.
+*   Validate/decode before Restore, block writes after failed loads and keep saved snapshots unchanged on write failure.
+*   Add atomic default writes, asynchronous Windows final save, owned bootstrap/driver cleanup and async deletion APIs.
+*   Make Editor preset targets and migration explicit; separate save-file deletion and PlayerPrefs reset.
+*   Add migration, architecture/decision documentation and reliability tests. See Documentation~/migration-2.0.md for breaking changes.
+
 
 ## v1.0.0
 

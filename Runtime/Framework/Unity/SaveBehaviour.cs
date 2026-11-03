@@ -21,7 +21,11 @@ namespace SWeetJelly.Save.Framework.Unity
         private SaveService saveService;
         private CancellationTokenSource lifetimeCts;
         private Coroutine autoSaveCoroutine;
-        private bool isSaving;
+        private Task loadTask;
+        private Task quitTask;
+        private bool quitAllowed;
+
+        public string SaveFileName => saveService?.SaveFileName;
 
         public bool IsConstructed => saveService != null;
 
@@ -39,22 +43,47 @@ namespace SWeetJelly.Save.Framework.Unity
 
         public void Construct(SaveService service)
         {
+            if (saveService != null) throw new InvalidOperationException("Driver already constructed.");
             saveService = service ?? throw new ArgumentNullException(nameof(service));
+            quitAllowed = false;
+            Application.wantsToQuit += WantsToQuit;
         }
 
         public void BeginLoad()
         {
+            EnsureConstructed();
             if (lifetimeCts == null)
                 lifetimeCts = new CancellationTokenSource();
 
-            _ = LoadSafeAsync(lifetimeCts.Token);
+            if (loadTask == null) loadTask = LoadSafeAsync(lifetimeCts.Token);
         }
 
-        public Task ForceSaveFromDriverAsync(CancellationToken ct = default)
+        public async Task<Result> ForceSaveFromDriverAsync(CancellationToken ct = default)
         {
             EnsureConstructed();
 
-            return SaveSafeAsync(true, ct);
+            var source = lifetimeCts;
+            var service = saveService;
+            var loading = loadTask;
+            using var linked = source == null ? null : CancellationTokenSource.CreateLinkedTokenSource(ct, source.Token);
+            var token = linked?.Token ?? ct;
+            token.ThrowIfCancellationRequested();
+            if (loading != null)
+            {
+                if (token.CanBeCanceled)
+                {
+                    using var waiting = CancellationTokenSource.CreateLinkedTokenSource(token);
+                    var cancelled = Task.Delay(Timeout.Infinite, waiting.Token);
+                    await Task.WhenAny(loading, cancelled);
+                    waiting.Cancel();
+                    token.ThrowIfCancellationRequested();
+                }
+                await loading;
+            }
+            token.ThrowIfCancellationRequested();
+            if (!ReferenceEquals(service, saveService))
+                return Result.Failure(SWeetJelly.Save.Contract.SaveErrors.NotLoaded);
+            return await SaveSafeAsync(true, token);
         }
 
         private async Task LoadSafeAsync(CancellationToken ct)
@@ -63,7 +92,7 @@ namespace SWeetJelly.Save.Framework.Unity
             {
                 EnsureConstructed();
 
-                saveService.UpdateTime(Time.time);
+
 
                 Result loadResult = await saveService.LoadAsync(ct);
 
@@ -73,7 +102,7 @@ namespace SWeetJelly.Save.Framework.Unity
                     return;
                 }
 
-                if (useAutoSave)
+                if (useAutoSave && !ct.IsCancellationRequested && this != null)
                     StartAutoSave();
             }
             catch (OperationCanceledException)
@@ -117,45 +146,25 @@ namespace SWeetJelly.Save.Framework.Unity
                 if (saveService == null || !saveService.IsLoaded)
                     continue;
 
-                _ = SaveSafeAsync(false, lifetimeCts.Token);
+                _ = ObserveSaveAsync(false, lifetimeCts.Token);
             }
         }
 
-        private async Task SaveSafeAsync(
-            bool forceSave,
-            CancellationToken ct)
+        private async Task<Result> SaveSafeAsync(bool forceSave, CancellationToken ct)
         {
-            if (saveService == null)
-                return;
-
-            if (!saveService.IsLoaded)
-                return;
-
-            if (isSaving)
-                return;
-
+            if (saveService == null || !saveService.IsLoaded)
+                return Result.Failure(SWeetJelly.Save.Contract.SaveErrors.NotLoaded);
             try
             {
-                isSaving = true;
-
-                saveService.UpdateTime(Time.time);
-
-                Result saveResult = await saveService.SaveAsync(forceSave, ct);
-
-                if (saveResult.IsFailure)
-                    Debug.LogError(saveResult.Error.ToString(), this);
+                var result = await saveService.SaveAsync(forceSave, ct);
+                if (result.IsFailure) Debug.LogError(result.Error.ToString(), this);
+                return result;
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) { throw; }
+            catch (Exception e)
             {
-                // Lifetime cancellation. Ignore.
-            }
-            catch (Exception ex)
-            {
-                Debug.LogException(ex);
-            }
-            finally
-            {
-                isSaving = false;
+                Debug.LogException(e, this);
+                return Result.Failure(new SWeetJelly.Shared.Result.Error("Save.DriverFailed", e.Message));
             }
         }
 
@@ -170,46 +179,50 @@ namespace SWeetJelly.Save.Framework.Unity
             if (saveService == null || !saveService.IsLoaded)
                 return;
 
-            _ = SaveSafeAsync(true, CancellationToken.None);
+            _ = ObserveSaveAsync(true, lifetimeCts?.Token ?? CancellationToken.None);
         }
 
-        private void OnApplicationQuit()
+        private async Task ObserveSaveAsync(bool force, CancellationToken ct)
         {
-            if (!saveOnApplicationQuit)
-                return;
+            try { await SaveSafeAsync(force, ct); }
+            catch (OperationCanceledException) { }
+        }
 
-            if (saveService == null || !saveService.IsLoaded)
-                return;
+        private bool WantsToQuit()
+        {
+            if (quitAllowed || Application.isEditor || !saveOnApplicationQuit || saveService == null) return true;
+            if (!saveService.IsLoaded && loadTask == null) return true;
+            if (quitTask == null) quitTask = FlushAndQuitAsync();
+            return false;
+        }
 
+        private async Task FlushAndQuitAsync()
+        {
+            await Task.Yield();
             try
             {
-                saveService.UpdateTime(Time.time);
-
-                Result saveResult = saveService
-                    .SaveAsync(true, CancellationToken.None)
-                    .GetAwaiter()
-                    .GetResult();
-
-                if (saveResult.IsFailure)
-                    Debug.LogError(saveResult.Error.ToString(), this);
+                var result = await ForceSaveFromDriverAsync();
+                if (result.IsFailure) return;
+                quitAllowed = true;
+                Application.Quit();
             }
-            catch (Exception ex)
-            {
-                Debug.LogException(ex);
-            }
+            catch (OperationCanceledException) { }
+            catch (Exception e) { Debug.LogException(e, this); }
+            finally { quitTask = null; }
         }
 
-        private void OnDestroy()
+        public void Shutdown()
         {
+            Application.wantsToQuit -= WantsToQuit;
             StopAutoSave();
-
-            if (lifetimeCts == null)
-                return;
-
-            lifetimeCts.Cancel();
-            lifetimeCts.Dispose();
+            lifetimeCts?.Cancel();
+            lifetimeCts?.Dispose();
             lifetimeCts = null;
+            saveService = null;
+            loadTask = null;
         }
+
+        private void OnDestroy() => Shutdown();
 
         private void EnsureConstructed()
         {

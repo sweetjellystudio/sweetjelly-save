@@ -42,19 +42,11 @@ namespace SWeetJelly.Save.Tests.EditMode
         }
 
         [Test]
-        public void GlobalSaveData_Flush_AccumulatesGameTimeAndExitTime()
+        public void GlobalSaveData_Default_PreservesEntryDocumentVersion()
         {
             var save = new GlobalSaveData();
-            var exitTime = new DateTime(2026, 6, 4, 12, 0, 0);
-
-            save.Initialise(10f);
-            save.SetTime(12.5f);
-            save.Flush(15f, exitTime);
-
-            Assert.That(save.SavedGameTime, Is.EqualTo(5f).Within(0.0001f));
-            Assert.That(save.GameTime, Is.EqualTo(5f).Within(0.0001f));
-            Assert.That(save.LastExitTime, Is.EqualTo(exitTime));
-            Assert.That(save.SavedData, Is.Not.Null);
+            Assert.That(save.SavedData.Version, Is.EqualTo(1));
+            Assert.That(save.SavedData.Entries, Is.Empty);
         }
 
         private static TException AssertThrows<TException>(Action action)
